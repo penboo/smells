@@ -17,7 +17,7 @@ indexTokens = ['0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
 				'0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f'
 				]
 
-
+account = "0x7Ff2A8fe4cE4d321EB315E1CD8B929F5a93C4396"
 isLong = [true,true,false,false]
 // 0 wrapped Ether = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1
 // 1 USD Coin (Arb1) (USDC) = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8
@@ -156,7 +156,6 @@ async function openPosition(id){
 	usdcBalance= ethers.utils.formatUnits(usdcBalance, usdcDecimals)
 	console.log(usdcBalance + ' USDC')
 	
-	
 	if (sizeETHShort==0&&sizeETHLong==0) {
 		if (isLong[id]==true){
 			console.log('Trying to enter long... ')
@@ -166,7 +165,7 @@ async function openPosition(id){
 				path = [indexTokens[id],collateralTokens[id]]
 				//amountIn = (usdcBalance)*(Math.pow(10,30))
 				amountIn = (usdcBalance)*(Math.pow(10,6))
-				amountIn = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(amountIn))
+				//amountIn = ethers.utils.hexlify(amountIn)
 				console.log(amountIn + ' amountIn post hex')
 				neededzeroesamountIn = 66 - amountIn.length
 				for (c=0;c<neededzeroesamountIn;c++){
@@ -174,15 +173,16 @@ async function openPosition(id){
 				}
 				console.log(amountIn + ' amountIn after')
 				console.log(amountIn + ' amountIn')
-				minOut = amountIn // minimum amount to swap for.. can be 0 if no swap is required
+				minOut = amountIn.toString() // minimum amount to swap for.. can be 0 if no swap is required
+				
 			}
 			//if (ethbalanceHR>0.015){
 			if (ethbalanceHR>0.015&&usdcBalance==0){
-				console.log('ethbalanceHR>0.003 ')
+				console.log('ethbalanceHR>0.015')
 				path = [indexTokens[id]]
 				//need same token that we're longing
 				amountIn = (ethbalanceHR)*(Math.pow(10,18))
-				amountIn = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(amountIn))
+				//amountIn = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(amountIn))
 				console.log(amountIn + ' amountIn post hex')
 				neededzeroesamountIn = 66 - amountIn.length
 				for (c=0;c<neededzeroesamountIn;c++){
@@ -190,8 +190,12 @@ async function openPosition(id){
 				}
 				console.log(amountIn + ' amountIn after')
 				console.log(amountIn + ' amountIn')
-				minOut = amountIn // minimum amount to swap for.. can be 0 if no swap is required
+				minOut = amountIn.toString() // minimum amount to swap for.. can be 0 if no swap is required
+				
 			}
+			// FOR LOOP WHERE THE PRICE IS PULLED FROM API 
+			// https://api.gmx.io/prices
+			acceptablePrice = 1300//USD value of the max (for longs) or min (for shorts) index price acceptable when executing the request
 		}
 		if (isLong[id]==false){ 
 			console.log('Trying to enter short... ')
@@ -199,17 +203,17 @@ async function openPosition(id){
 				console.log('usdcbalance==0&&ethbalanceHR>0.003 ')
 				path = [indexTokens[id],collateralTokens[id]]
 			}
-			if (usdcbalance>0.015){
+			if (usdcbalance>0){
 				console.log('usdcbalance>5')
 				//need a stable to short some other token 
 				path = [collateralTokens[id]]
 			}
+			acceptablePrice =  0 //USD value of the max (for longs) or min (for shorts) index price acceptable when executing the request
 		}
-		
 		sizeDelta = leverage*amountIn
-		sizeDelta = Math.floor(sizeDelta)
+		sizeDelta = sizeDelta.toString()
 		console.log(sizeDelta + ' sizeDelta')
-		acceptablePrice =  //USD value of the max (for longs) or min (for shorts) index price acceptable when executing the request
+		amountIn = amountIn.toString()
 		executionFee = await PositionRouter.minExecutionFee()
 		console.log(executionFee + ' minExecutionFee')
 		referralCode = 'winwinwin'
@@ -230,18 +234,9 @@ async function openPosition(id){
 		console.log(acceptablePrice + ' acceptablePrice')
 		console.log(executionFee + ' executionFee')
 		console.log(referralCode + ' referralCode')
-		
 		gasPrice = await provider.getGasPrice();
-		console.log(gasPrice.toString())
 		gasPrice = gasPrice.toString()
-		//gasPrice = gasPrice*(Math.pow(10,18)
-		//gasPrice = ethers.utils.hexValue(BigNumber.from(gasPrice).toHexString())
-		gasPrice = ethers.utils.hexValue(gasPrice)
 		console.log(gasPrice + ' gasPrice')
-		/*neededzeroesGP = 60 - gasPrice.length
-		for (g=0;g<neededzeroesGP;g++){
-		gasPrice += "0"
-		} */ 
 		console.log(gasPrice + ' gasPrice')
 		createIncreasePosition = await PositionRouter.createIncreasePosition(path,indexTokens[id],amountIn,minOut,sizeDelta,isLong[id],acceptablePrice,executionFee,referralCode,'0x7Ff2A8fe4cE4d321EB315E1CD8B929F5a93C4396',
 		{gasLimit: gasPrice})
@@ -258,95 +253,3 @@ async function getPositions(){
 	account = await signer.getAddress()
 	console.log(account)
 }
-
-// To calculate the available amount of liquidity for long positions:
-async function availLiqLong(){
-	//  USD amounts are multiplied by (10 ** 30)
-    //  Token amounts are multiplied by (10 ** token.decimals)
-	
-	indexToken = '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1'
-	
-poolAmount = await Vault.poolAmounts(indexToken)
-
-resAmount = await Vault.reservedAmounts(indexToken)
-availAmount = poolAmount - resAmount
-maxGlobalLongSizes = await PositionRouter.maxGlobalLongSizes(indexToken)
-guaranteedUsd = await Vault.guaranteedUsd(indexToken)
-availAmountInUSD = maxGlobalLongSizes - guaranteedUsd 
-
-console.log('Available Liquid Long')
-console.log(poolAmount)
-console.log(poolAmount.toString())
-console.log(availAmount)
-console.log(availAmount.toString())
-console.log(availAmountInUSD) 
-console.log(availAmountInUSD.toString()) 
-console.log(maxGlobalLongSizes) 
-console.log(maxGlobalLongSizes.toString()) 
-console.log(availAmountInUSD/(Math.pow(10,30)))
-console.log('-------------------------------')
-}
-
-
-
-async function availLiqShort(){
-	//  USD amounts are multiplied by (10 ** 30)
-    //  Token amounts are multiplied by (10 ** token.decimals)
-	
-poolAmount = await Vault.poolAmounts(collateralToken)
-resAmount = await Vault.reservedAmounts(collateralToken)
-availAmount = poolAmount - resAmount
-maxGlobalShortSizes = await PositionRouter.maxGlobalShortSizes(indexToken)
-guaranteedUsd = await Vault.globalShortSizes(indexToken)
-availAmountInUSD = maxGlobalShortSizes - guaranteedUsd 
-
-console.log('Available Liquid Short')
-console.log(poolAmount)
-console.log(poolAmount.toString())
-console.log(availAmount)
-console.log(availAmount.toString())
-console.log(availAmountInUSD) 
-console.log(availAmountInUSD.toString()) 
-console.log(maxGlobalShortSizes) 
-console.log(maxGlobalShortSizes.toString()) 
-console.log(availAmountInUSD)
-console.log('-------------------------------')
-}
-
-
-
-//for MetaMask
-//const provider = new ethers.providers.Web3Provider(window.ethereum)
-
-// The provider also allows signing transactions to
-// send ether and pay to change state within the blockchain.
-// For this, we need the account signer...
-//const signer = provider.getSigner()
-
-// GMX Position Router Contract Address: 0xb87a436B93fFE9D75c5cFA7bAcFff96430b09868
-// GMX Position Router ABI: C:\Projects2\Projects\server-new\server\node_modules\@mathieuc\tradingview\examples\gmx-interface-master\src\abis\PositionRouter.json
-
-	  
-	  
-
-/*
-
-async function test(){
-	 const abi = [
-      "function name() public view returns (string)",
-      "function symbol() public view returns (string)",
-      "function decimals() public view returns (uint8)",
-      "function totalSupply() public view returns (uint256)",
-      "function approve(address _spender, uint256 _value) public returns (bool success)"]
-
-    //const USDTContract = new ethers.Contract("0xdAC17F958D2ee523a2206206994597C13D831ec7", abi, signer)
-    const USDTContract = new ethers.Contract("0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", abi, signer)
-
-    const name = await USDTContract.name()
-    const symbol = await USDTContract.symbol()
-    const decimals = await USDTContract.decimals()
-    const totalSupply = await USDTContract.totalSupply()
-
-    console.log(`${symbol} (${name}) total supply is ${ethers.utils.formatUnits(totalSupply, decimals)}`)
-}
-*/
