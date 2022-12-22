@@ -49,27 +49,7 @@ const Router = new ethers.Contract(RouterContractAddress, rtABI, signer)
 var Client = require('node-rest-client').Client;
 var client = new Client();
 
-client.get("https://api.gmx.io/tokens", function (data, response) {
-	// parsed response body as js object
-	//console.log(data);
-	tokens = data;
-	//console.log(tokens)
-	
-	// raw response
-	//console.log(response);
-});
-
-//availLiqLong()
-//availLiqShort()
-//getPositions()
-//getBalance(indexToken)
-
-// openPosition() calls isSwapNeeded and that calls getBalance
-//openPosition(0)  // enter ETH long
-//openPosition(2)  // enter ETH short
-
 account = "0x7Ff2A8fe4cE4d321EB315E1CD8B929F5a93C4396"
-//const account =  signer
 
 openPosition(0)
 
@@ -79,26 +59,11 @@ async function getBalance(acct){
 }
 
 async function openPosition(id){
-	// MAYBE WE HAVE TO APPROVE EACH TIME.. MAYBE NOT
-	/*approvePRCA = await Router.approvePlugin(PositionRouterContractAddress)
-	console.log(approvePRCA)
-	approveCollTokenRouter = await Router.approvePlugin(collateralTokens[id])
-	console.log(approveCollTokenRouter) */
-	
-	// WE NOW HAVE TO "Approve the Router contract for the token and amount you would deposit as collateral for the position"
-	// approveRouter = await Router.approve(indexToken,)
-	
-    // When trying to enter a long.. IF there is no ETH in the account AND no current positions... 
-	// check for USD and IF there is USD then do a swap for ETH
-	
-	// When trying to enter a short.. If there is no USD balance AND no current positions...
-	// check for any ETH above 0.003 ETH and SWAP for USD.. then enter Short
-	
 	leverage = 8.8
 	
 	positions = await Reader.getPositions(VaultContractAddress,account,collateralTokens,indexTokens,isLong)
 	
-	/*The returned array would be a list of values ordered by the positions (9 values):
+	/*The returned array for positions would be a list of values ordered by the positions (9 values):
 			size 
 				position size in USD
 				value at: positionIndex * 9
